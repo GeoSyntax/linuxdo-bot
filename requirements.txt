@@ -1,0 +1,31 @@
+# ============================================================
+# linux.do 关键词监控机器人 —— 核心依赖（本地部署只需这几个）
+# ============================================================
+requests>=2.31.0        # HTTP + Telegram API 客户端 + 官方 TG 频道源（主力）
+numpy>=1.24.0           # RAG 向量检索（TF-IDF 回退零依赖，仅需 numpy）
+playwright>=1.40.0      # 可选：--source linuxdo 直连过 Cloudflare 盾（真实浏览器）
+# ⚠️ 用 linuxdo 直连时装完执行一次：python -m playwright install chromium
+# sentence-transformers>=2.2.0   # 可选：RAG 本地语义 embedding（否则 TF-IDF 回退）
+
+# ---- 采集引擎附带（解析/配置）----
+lxml>=5.1.0             # XPath 解析
+beautifulsoup4>=4.12.0  # CSS 解析回退
+PyYAML>=6.0             # 配置
+
+# ---- 分布式（可选，跑分布式时需要）----
+# scrapy>=2.11.0
+# scrapy-redis>=0.7.3
+# redis>=5.0.0
+
+# ---- 存储（MySQL 可选，默认用内置 sqlite3）----
+# PyMySQL>=1.1.0
+
+# ---- AI 清洗（provider 按需）----
+# ollama 走本地 HTTP，无需额外包；仅用 requests 即可
+# openai>=1.0.0         # 若用 OpenAI 兼容 API
+
+# ---- 演示 Web 界面（可选）----
+flask>=3.0.0
+
+# ---- 测试 ----
+pytest>=8.0.0

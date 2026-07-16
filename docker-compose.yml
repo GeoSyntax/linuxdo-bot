@@ -1,0 +1,10 @@
+# 一键本地部署：docker compose up -d
+services:
+  linuxdo-bot:
+    build: .
+    container_name: linuxdo-bot
+    restart: unless-stopped
+    env_file:
+      - .env                 # 从 .env 读取 TG_BOT_TOKEN 等
+    volumes:
+      - ./data:/app/data     # 持久化订阅与去重记录

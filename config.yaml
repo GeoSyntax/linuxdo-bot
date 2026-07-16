@@ -1,0 +1,49 @@
+# ============================================================
+# 知乎合规采集系统 - 全局配置
+# ============================================================
+
+crawler:
+  base_url: "https://www.zhihu.com"
+  # User-Agent 池：轮换以模拟不同客户端（稳定性工程，非绕过封禁）
+  user_agents:
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  timeout: 15
+
+# ---- 合规内核：宁可慢，不可对服务器造成压力 ----
+compliance:
+  respect_robots: true          # 遵守 robots.txt
+  requests_per_second: 0.33     # 令牌桶：约 3 秒 1 请求
+  burst: 1                      # 突发容量
+  max_retries: 3                # 失败重试次数
+  backoff_base: 2.0             # 指数退避基数（秒）
+  backoff_max: 60.0             # 退避上限
+
+# ---- 存储 ----
+storage:
+  backend: "sqlite"             # sqlite | mysql
+  sqlite_path: "data/zhihu.db"
+  mysql:                        # backend=mysql 时生效
+    host: "127.0.0.1"
+    port: 3306
+    user: "root"
+    password: ""
+    database: "zhihu"
+
+# ---- AI 清洗 ----
+ai:
+  enabled: true
+  provider: "rule"              # rule(离线规则回退) | ollama(本地) | openai(云API)
+  ollama:
+    host: "http://127.0.0.1:11434"
+    model: "qwen2.5:7b"
+  openai:
+    base_url: "https://api.openai.com/v1"
+    api_key: ""                 # 或用环境变量 OPENAI_API_KEY
+    model: "gpt-4o-mini"
+
+# ---- 分布式（可选）----
+distributed:
+  redis_url: "redis://127.0.0.1:6379/0"
+  bloom_capacity: 100000000     # 布隆过滤器容量
+  bloom_error_rate: 0.01        # 误判率

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>zhihu-crawler · 合规采集与 AI 清洗演示</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-name">zhihu-crawler</span>
+      <span class="brand-sub">合规采集 · AI 清洗</span>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-view="overview">概览</button>
+      <button class="nav-item" data-view="collect">真实采集</button>
+      <button class="nav-item" data-view="pipeline">离线流水线</button>
+      <button class="nav-item" data-view="signature">签名复现</button>
+      <button class="nav-item" data-view="clean">AI 清洗</button>
+      <button class="nav-item" data-view="dedup">布隆去重</button>
+      <button class="nav-item" data-view="compliance">合规内核</button>
+      <button class="nav-item" data-view="recon">反爬实测</button>
+    </nav>
+    <div class="side-foot">
+      <span id="provider-tag" class="tag">provider: —</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h1 id="view-title">概览</h1>
+      <span id="view-desc" class="desc"></span>
+    </header>
+    <div class="content" id="content"><!-- views injected --></div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

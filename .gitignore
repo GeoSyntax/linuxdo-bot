@@ -1,0 +1,30 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+data/
+*.db
+*.sqlite3
+.env
+.idea/
+.vscode/
+.claude/
+
+# 个人文件 / 截图 / 临时文件
+郭浩宇*.pdf
+zhihuJD.txt
+*.png
+_probe*.py
+_probe*.txt
+_t.txt
+tmp/
+output/
+*.log
+data/
+
+# 简历/面试准备文档（不进仓库）
+docs/简历*
+docs/面试*
+docs/郭浩宇*

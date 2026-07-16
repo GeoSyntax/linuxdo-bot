@@ -1,0 +1,8 @@
+# linux.do 机器人运行时最小依赖（Docker 用）
+# 主力源=官方 TG 频道网页版（纯 requests），RAG 向量检索用 numpy。
+requests>=2.31.0
+numpy>=1.24.0
+
+# 可选增强（默认不装，需要时解除注释）：
+# playwright>=1.40.0                 # --source linuxdo 直连过 CF 盾
+# sentence-transformers>=2.2.0       # RAG 本地语义 embedding（否则用 TF-IDF 回退）
