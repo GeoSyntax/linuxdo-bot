@@ -16,6 +16,8 @@ data/
 郭浩宇*.pdf
 zhihuJD.txt
 *.png
+# 允许 docs/images/ 下的 README 截图入库
+!docs/images/*.png
 _probe*.py
 _probe*.txt
 _t.txt
