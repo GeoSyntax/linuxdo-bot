@@ -1,50 +1,91 @@
-# linux.do 关键词监控 Telegram 机器人
+<div align="center">
 
-> **一句话**：定时**合规采集 linux.do 最新主题**，命中你订阅的**关键词**就通过 **Telegram 推送**给你。支持多关键词/AND/OR/正则订阅，用户**本地一键部署**。
+# 🤖 linuxdo-bot
 
-> **技术核心**：linux.do 前置 Cloudflare 人机盾（普通请求、TLS 指纹伪装都被 403）——用 **Playwright 真实浏览器过盾**采集其 Discourse `.json` 接口（robots 实测**允许**）。合规采集内核（robots 遵守 + 令牌桶限速 + 退避重试）贯穿始终。
+### linux.do 社区智能监控 · 关键词订阅 · RAG 语义搜索 Telegram 机器人
 
-[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)]()
-[![License](https://img.shields.io/badge/license-MIT-green.svg)]()
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)]()
+[![License](https://img.shields.io/badge/License-MIT-green.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-112-passing-brightgreen)]()
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)]()
+[![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white)]()
 
----
+**全站 43 万主题覆盖** · **Cloudflare 反爬突破** · **多出口 IP 轮换** · **RAG 语义检索** · **18,000+ 篇入库**
 
-## ✨ 功能
-
-- 🔔 **关键词订阅推送**：`/sub python`、`/sub ai|llm agent`（空格=且，`|`=或，`/正则/`）
-- 🕸️ **合规采集 linux.do**：Playwright 过 Cloudflare 盾，robots 允许的 `.json` 接口，令牌桶限速
-- 🧹 **去重**：已见主题 + 已推送记录双重去重，不重复打扰
-- 🤖 **Telegram 机器人**：`/sub /unsub /list /latest /help` 命令交互
-- 🚀 **本地部署友好**：极简依赖（requests + playwright），`.env` 配置，含 Dockerfile / docker-compose
-- 🧪 **无 token 可验证**：`--dry-run` 不需 TG token，对真实 linux.do 跑一轮看命中
+</div>
 
 ---
 
-## ⚖️ 合规声明（请先读）
+## ✨ 功能一览
 
-- ✅ linux.do 的 `robots.txt` **实测允许** `/latest.json`、`/t/*.json`、`/c/` 等路径（见 [`docs/linuxdo-crawling.md`](docs/linuxdo-crawling.md)）
-- ✅ 只采**公开主题列表/内容**，不涉及登录态、不涉及私信/隐私
-- ✅ **令牌桶限速**（默认约 3 秒 1 次）+ 退避重试，轮询间隔默认 5 分钟，不给社区造成压力
-- ✅ 用真实浏览器过 Cloudflare = **模拟真实用户访问被允许的公开内容**，非逆向破解
-- ⚠️ 请遵守 linux.do《用户协议》与社区规范，勿规模化转载
+| 功能 | 说明 |
+|:---|:---|
+| 🔔 **关键词订阅** | 空格 = 且、`\|` = 或、`/正则/`，命中即推送 |
+| 👤 **用户关注** | `/subscribe_user` 关注特定用户，TA 发帖即时推送 |
+| 🧠 **AI 语义搜索** | `/ask` 用 RAG 检索社区已有方案，带原帖引用链接 |
+| ⚡ **一键订阅** | `/quick` inline 按钮：Claude / AI / Gemini / 公益 等热门标签 |
+| 🌐 **全站覆盖** | sitemap 枚举 43 万 topic_id → frontier 任务表 → 断点续爬 |
+| 🛡️ **CF 反爬突破** | Playwright 真浏览器过 Cloudflare 盾，成功率 95% |
+| 🔄 **多 IP 轮换** | 7 个 Clash 出口 IP 按批轮换，分散 CF 频率风控 |
+| 📦 **轻量部署** | 极简依赖（requests + numpy），Docker 一键启动 |
 
 ---
 
-## 🚀 快速开始（本地部署）
+## 📸 效果展示
+
+<div align="center">
+
+### Telegram Bot 交互
+
+![采集过程](docs/images/collect_linuxdo.png)
+
+### 全站采集引擎
+
+![Pipeline](docs/images/pipeline.png)
+
+### 数据采集实况
+
+![采集](docs/images/collect.png)
+
+### 合规限速
+
+![合规](docs/images/compliance.png)
+
+### 去重引擎
+
+![去重](docs/images/dedup.png)
+
+### 签名复现
+
+![签名](docs/images/signature.png)
+
+### 数据清洗
+
+![清洗](docs/images/clean.png)
+
+### 系统总览
+
+![总览](docs/images/overview.png)
+
+</div>
+
+---
+
+## 🚀 快速开始
 
 ### 方式一：直接跑（推荐先试）
 
 ```bash
-# 1. 安装依赖（主力源=官方 TG 频道，纯 requests，无需浏览器）
+# 1. 安装依赖（主力源 = 官方 TG 频道，纯 requests，无需浏览器）
 pip install -r requirements.txt
 
-# 2. 【无需 TG token】先验证采集与匹配是否通
+# 2. 【无需 TG token】验证采集与匹配
 python -m linuxdo_bot --dry-run --keyword "gpt|ai|模型" --keyword cursor
-#   → 从官方 TG 频道拉一轮 linux.do 最新主题，命中的打印到控制台
+#   → 从官方 TG 频道拉最新主题，命中的打印到控制台
 
-# 3.（可选）历史回填 + 建 RAG 索引，让 /ask 能搜到内容
-python -m linuxdo_bot --backfill --pages 20   # 断点续跑，可反复运行往前翻
-python -m linuxdo_bot --reindex               # 给语料库建向量索引
+# 3.（可选）历史回填 + 建 RAG 索引
+python -m linuxdo_bot --backfill --pages 20   # 断点续跑，可反复运行
+python -m linuxdo_bot --reindex               # 建向量索引
 python -m linuxdo_bot --ask "codex 额度超限怎么办"   # 离线自检问答
 
 # 4. 配置 Telegram token 并启动
@@ -59,23 +100,25 @@ cp .env.example .env          # 填 TG_BOT_TOKEN
 docker compose up -d          # 轻量 slim 镜像，纯 requests，无需浏览器
 ```
 
-### Telegram 命令
+---
+
+## 🤖 Telegram 命令
 
 | 命令 | 说明 |
-|---|---|
-| `/subscribe 关键词` | 订阅。`/subscribe python`、`ai\|llm agent`、`/v\d+/`（支持 且/或/正则） |
+|:---|:---|
+| `/subscribe 关键词` | 订阅。支持 `python`、`ai\|llm agent`、`/v\d+/`（且/或/正则） |
 | `/unsubscribe 关键词` | 取消订阅 |
 | `/subscribe_user 用户名` | 关注某用户，TA 发帖就推送 |
 | `/unsubscribe_user 用户名` | 取消关注 |
-| `/quick` | 一键订阅（inline 按钮：claude/ai/gemini/公益 + 公益大佬） |
-| `/ask 问题` | 🔍 AI 搜索社区已有解决方法（论坛搜索的增强版，带原帖引用） |
+| `/quick` | 一键订阅（inline 按钮：Claude / AI / Gemini / 公益 等） |
+| `/ask 问题` | 🧠 AI 搜索社区已有方案（带原帖引用） |
 | `/list` | 查看我的订阅 |
 | `/latest [n]` | 立即拉最新 n 条 |
 | `/help` | 帮助 |
 
 ---
 
-## 🏗️ 架构
+## 🏗️ 系统架构
 
 ```
   Telegram 用户 ──/subscribe /ask /quick──▶ 命令路由 commands.py
@@ -89,8 +132,8 @@ docker compose up -d          # 轻量 slim 镜像，纯 requests，无需浏览
         │                                        ▲ 命中?(matcher AND/OR/正则)
   ┌─────┴───────────┐   主题    ┌────────────────┴──────────┐
   │  监控循环         │◀─────────│  官方 TG 频道源             │
-  │  monitor.py      │  沉淀    │  t.me/s/linuxdoit(纯requests)│ ← 无需 CF 盾
-  │  (每 N 分钟)      │─────┐    │  合规客户端: 限速 + 退避     │
+  │  monitor.py      │  沉淀    │  t.me/s/linuxdoit(纯requests)│ ← 无 CF 盾
+  │  (每 N 分钟)      │─────┐    │  限速 + 退避                │
   └─────────────────┘     │    └───────────────────────────┘
                           ▼
               ┌────────────────────┐      ┌──────────────────────┐
@@ -100,127 +143,150 @@ docker compose up -d          # 轻量 slim 镜像，纯 requests，无需浏览
               └────────────────────┘      └──────────────────────┘
 ```
 
-- **主力源**：`sources/tgchannel.py`（官方 TG 频道网页版，纯 requests、无需 Cloudflare 盾、`?before=` 可回填）。
-- **可选源**：`sources/linuxdo.py`（Discourse `.json` + Playwright 过盾，取正文详情用）。
-- 底层复用 `zhihu_crawler/` 的合规采集内核（`compliance/` + `client.py`）。
+### 数据源
+
+| 数据源 | 协议 | 用途 | Cloudflare |
+|:---|:---|:---|:---:|
+| `t.me/s/linuxdoit`（官方 TG 频道） | 纯 HTTP | 增量主题发现，主力源 | ❌ 无需 |
+| `/t/{id}.json`（Discourse API） | HTTP + Playwright | 全文详情采集 | ✅ 需过盾 |
+| `sitemap.xml`（43 子图 × 1 万） | HTTP + Playwright | 全站 topic_id 枚举 | ✅ 需过盾 |
+
+---
+
+## 🔍 /ask 智能搜索（RAG）
+
+论坛原生搜索不好用。`/ask` 用**语义检索 + LLM 综合**帮用户快速找到已有解决方案，**答案始终带原帖引用链接**。
+
+- **数据来源**：监控采集的每条主题都沉淀进语料库（`corpus.py`）；`--backfill` 从 TG 频道 `?before=` 往前翻做历史回填（断点续跑）。
+- **三档降级，任何环境可跑**：
+  - Embedding：`local`（sentence-transformers 中文语义）→ `api`（OpenAI 兼容）→ `tfidf`（纯 numpy，零依赖回退）
+  - 生成：`ollama`（本地）→ `openai`（云）→ `rule`（直接给最相关主题列表）
 
 ---
 
 ## ⚙️ 配置（.env）
 
 | 变量 | 说明 | 默认 |
-|---|---|---|
+|:---|:---|:---|
 | `TG_BOT_TOKEN` | **必填**，@BotFather 获取 | — |
-| `LINUXDO_CATEGORIES` | 监控分类：`latest` 或分类 slug，逗号分隔 | `latest` |
 | `POLL_INTERVAL` | 采集轮询间隔（秒） | `300` |
 | `FETCH_LIMIT` | 每轮取主题数 | `30` |
-| `FETCH_DETAIL` | 是否二跳抓正文做更精准匹配 | `false` |
-| `REQUESTS_PER_SECOND` | 限速（合规） | `0.33` |
-| `HEADLESS` | 浏览器无头（仅 linuxdo 直连源用） | `true` |
-| `RAG_EMBED_PROVIDER` | `/ask` 向量化：`tfidf`(零依赖) / `local` / `api` | `tfidf` |
-| `RAG_LLM_PROVIDER` | `/ask` 答案生成：`rule`(主题列表) / `ollama` / `openai` | `rule` |
-| `RAG_TOP_K` | `/ask` 返回相关主题数 | `5` |
+| `REQUESTS_PER_SECOND` | 限速 | `0.33` |
+| `RAG_EMBED_PROVIDER` | 向量化：`tfidf` / `local` / `api` | `tfidf` |
+| `RAG_LLM_PROVIDER` | 答案生成：`rule` / `ollama` / `openai` | `rule` |
+| `RAG_TOP_K` | 返回相关主题数 | `5` |
 
-（RAG 完整变量见 `.env.example`。）
+完整变量见 [`.env.example`](.env.example)。
 
 ---
 
-## 🔍 /ask 智能搜索（RAG）
+## 🧩 底层采集引擎
 
-论坛原生搜索不好用，`/ask` 用**语义检索 + LLM 综合**帮用户快速找到已有解决方法，**答案始终带原帖引用链接**（把流量导回 linux.do，合规）。
+本项目构建在一套通用的**多源采集引擎**之上，核心能力：
 
-- **数据来源**：监控采集的每条主题都沉淀进语料库（`corpus.py`）；`--backfill` 从 TG 频道 `?before=` 往前翻做历史回填（断点续跑）。
-- **三档降级，任何环境可跑**：
-  - embedding：`local`(sentence-transformers 中文语义) → `api`(OpenAI 兼容) → `tfidf`(纯 numpy，零依赖回退)
-  - 生成：`ollama`(本地) → `openai`(云) → `rule`(直接给最相关主题列表，仍比原生搜索好用)
-- 运维命令：`--backfill --pages N`（回填）、`--reindex`（建向量索引）、`--ask "问题"`（离线自检）。
-
-详见 [`docs/rag.md`](docs/rag.md)。
-
----
-
-## 🧩 底层采集引擎（可独立使用）
-
-本项目构建在一套通用的**多源合规采集引擎**之上，除 linux.do 外还内置 Hacker News / arXiv 官方 API 源，以及 AI 清洗、布隆去重、Scrapy-Redis 分布式扩展、知乎签名逆向复现等能力：
+- **Cloudflare 反爬突破**：实测 4 种方案递进，最终 Playwright 真浏览器 + reload 重试达 95% 成功率
+- **多出口 IP 轮换**：对接 Clash 7 个节点，一个 IP 过盾后连采一批再切换，分散频率风控
+- **frontier 任务表**：状态机（`pending → detail_done / gone / failed`），断点续爬零重复零丢失
+- **布隆过滤器去重**：1 亿 URL 仅需 ~114MB，较 Redis set 省 70×
+- **Scrapy-Redis 分布式**：共享队列 + 断点续爬完整工程
+- **AI 清洗管道**：LLM 富文本 → Markdown，剔除广告灌水，三档 provider 降级
 
 ```bash
 python -m zhihu_crawler.run_multi --source linuxdo,hackernews,arxiv --limit 5
-python -m webapp.server     # 可视化演示界面(采集/清洗/去重/合规/反爬实测)
+python -m webapp.server     # 可视化演示界面
 ```
 
 详见 [`docs/architecture.md`](docs/architecture.md)、[`docs/linuxdo-crawling.md`](docs/linuxdo-crawling.md)。
 
 ---
 
-## 📂 目录结构
+## 📌 技术亮点（面试可深挖）
 
-```
-zhihu/
-├── README.md                      # 本文件
-├── requirements.txt
-├── .env.example                   # ⭐ 环境配置模板（复制为 .env）
-├── Dockerfile / docker-compose.yml # ⭐ 一键容器部署
-├── config.yaml                    # 采集引擎配置（限速/AI/存储）
-├── linuxdo_bot/                   # ⭐⭐ Telegram 机器人应用
-│   ├── __main__.py                # 主入口（--dry-run/--backfill/--reindex/--ask）
-│   ├── config.py                  # .env 配置加载（含 RAG）
-│   ├── monitor.py                 # 监控循环：采集→匹配→分发→沉淀语料库
-│   ├── matcher.py                 # 关键词匹配（AND/OR/正则）
-│   ├── store.py                   # SQLite：关键词/用户订阅 + 去重
-│   ├── corpus.py                  # ⭐ 语料库：文档 + 回填游标
-│   ├── backfill.py                # ⭐ 历史回填（TG 频道 ?before= 断点续跑）
-│   ├── commands.py                # 命令路由 + inline 回调
-│   ├── presets.py                 # 快捷关键词 + 公益大佬预置
-│   ├── telegram.py                # 轻量 TG API 客户端（含 inline 键盘）
-│   └── rag/                       # ⭐ RAG 智能搜索
-│       ├── embedder.py            #   向量化：local/api/tfidf 三档
-│       ├── index.py               #   SQLite 向量存储 + numpy 检索
-│       ├── retriever.py           #   建索引 / 语义检索
-│       └── engine.py              #   /ask：检索→LLM 综合→带引用
-├── docs/
-│   ├── linuxdo-crawling.md        # ⭐ linux.do 采集实录（过盾方法论）
-│   ├── rag.md                     # ⭐ RAG 设计说明
-│   ├── architecture.md            # 采集引擎架构
-│   ├── reverse-engineering.md     # 知乎签名逆向方法论
-│   └── compliance.md              # 合规设计说明
-├── zhihu_crawler/
-│   ├── config.py                  # 配置加载
-│   ├── signature.py               # ⭐ x-zse-96 签名复现
-│   ├── client.py                  # 采集会话客户端
-│   ├── parser.py                  # 鲁棒解析器
-│   ├── models.py                  # 数据模型
-│   ├── storage.py                 # 存储（SQLite/MySQL）
-│   ├── compliance/
-│   │   ├── robots.py              # robots.txt 遵守
-│   │   └── throttle.py            # 令牌桶限速 + 退避重试
-│   ├── ai/
-│   │   ├── cleaner.py             # ⭐ AI 清洗管道
-│   │   └── providers.py           # LLM provider 抽象（ollama/api/rule）
-│   ├── sources/                  # ⭐ 多源适配器
-│   │   ├── tgchannel.py         #   ⭐ 官方 TG 频道（主力，纯 requests）
-│   │   ├── linuxdo.py           #   linux.do (Discourse + Playwright 过盾)
-│   │   ├── browser_fetcher.py   #   Playwright 过 Cloudflare 抓取器
-│   │   ├── hackernews.py        #   Hacker News 官方 API
-│   │   └── arxiv.py             #   arXiv 官方 API
-│   ├── distributed/dedup.py      # 布隆过滤器去重
-│   ├── run_multi.py              # 多源采集入口
-│   └── run.py                    # 知乎单机入口（含签名演示）
-├── webapp/                        # 采集引擎可视化演示界面
-├── scrapy_project/                # Scrapy-Redis 分布式工程
-└── tests/                         # 单元测试（90 项）
-```
+### 1. Cloudflare 反爬的多级突破
+
+| 方案 | 结果 | 发现 |
+|:---|:---|:---|
+| requests 直连 | 403 | CF 托管挑战拦截 |
+| curl_cffi TLS 指纹伪装 | 仍 403 | 托管挑战需执行 JS，指纹伪装无效 |
+| 浏览器内并发 fetch | 403 | CF 按 IP 做突发检测，并发是负优化 |
+| **Playwright + reload 重试** | **95% 成功率** | 单 IP 串行 + 过盾失败自动重试 |
+
+### 2. 多出口 IP 轮换策略
+
+发现 CF 按 IP 做频率冷却后，设计**多出口 IP 按批轮换**：对接 Clash API 管理 7 个节点（HK/JP/KR/SG/TW/US/DE），每个 IP 过盾后连采一批，采完切下一个 IP。单 IP 被冷却不影响其他 IP。
+
+### 3. frontier 全站任务表
+
+从 sitemap 枚举 43 万 topic_id 灌入 frontier 表，逐个采集详情并更新状态。已删主题自动标 `gone` 跳过；失败累加 `attempts` 超限标 `failed`。进程重启从 `pending` 继续，**断点续爬零重复零丢失**。
+
+### 4. RAG 三档降级
+
+Embedding 和 LLM 各三档降级：本地 → 云 API → 零依赖回退。没 GPU、没 API key、没联网，`/ask` 仍能跑。跨进程 TF-IDF 维度对齐：检索前检查 `needs_fit()`，用同一份语料重新 fit。
 
 ---
 
-## 📌 关键技术点（面试可深挖）
+## 📂 项目结构
 
-1. **签名机制复现**：分析知乎请求头 `x-zse-96` 的生成逻辑，从 DevTools 定位加密入口，到 Webpack 代码断点、AST 结构化分析混淆代码，最后用 Python 复现。见 [`docs/reverse-engineering.md`](docs/reverse-engineering.md)。
-2. **鲁棒解析**：面对知乎多变 DOM（及可能的干扰节点），解析器采用"主选择器 + 多重回退 + 数据校验"三层策略。
-3. **分布式去重**：Redis 布隆过滤器，1 亿 URL 仅需 ~171MB 内存（误判率 1%），对比 set 存储省 30x+。
-4. **AI 清洗**：LLM 把结构混乱的富文本回答规整为干净 Markdown，剔除广告/灌水，输出情感标签，支撑下游舆情分析。三档 provider（本地 Ollama / 云 API / 纯规则），保证任何环境可运行。
+```
+linuxdo-bot/
+├── README.md
+├── requirements.txt
+├── .env.example                      # 环境配置模板
+├── Dockerfile / docker-compose.yml   # 一键容器部署
+├── config.yaml                       # 采集引擎配置
+│
+├── linuxdo_bot/                      # ⭐ Telegram 机器人应用
+│   ├── __main__.py                   # 主入口（--dry-run/--backfill/--reindex/--ask）
+│   ├── config.py                     # .env 配置加载
+│   ├── monitor.py                    # 监控循环：采集→匹配→分发→沉淀
+│   ├── matcher.py                    # 关键词匹配（AND/OR/正则）
+│   ├── store.py                      # SQLite 订阅 + 去重
+│   ├── corpus.py                     # 语料库 + frontier 任务表
+│   ├── sitemap.py                    # sitemap 全站枚举器
+│   ├── fullcrawl.py                  # 全站采集调度器
+│   ├── backfill.py                   # 历史回填（TG 频道 ?before=）
+│   ├── commands.py                   # 命令路由 + inline 回调
+│   ├── presets.py                    # 快捷关键词预置
+│   ├── telegram.py                   # 轻量 TG API 客户端
+│   ├── _bg_crawl.py                  # 后台断点续爬脚本
+│   ├── _clash_crawl.py               # Clash 多 IP 轮换爬取
+│   └── rag/                          # ⭐ RAG 智能搜索
+│       ├── embedder.py               #   向量化：local/api/tfidf 三档
+│       ├── index.py                  #   SQLite 向量存储 + numpy 检索
+│       ├── retriever.py              #   建索引 / 语义检索
+│       └── engine.py                 #   /ask：检索→LLM 综合→带引用
+│
+├── zhihu_crawler/                    # 通用多源采集引擎
+│   ├── sources/                      # 数据源适配器
+│   │   ├── tgchannel.py              #   ⭐ 官方 TG 频道（主力，纯 requests）
+│   │   ├── linuxdo.py                #   Discourse + Playwright 过盾
+│   │   ├── browser_fetcher.py        #   Playwright + 多 IP 代理支持
+│   │   ├── hackernews.py             #   Hacker News API
+│   │   └── arxiv.py                  #   arXiv API
+│   ├── distributed/                  # 分布式基础设施
+│   │   ├── dedup.py                  #   布隆过滤器（1 亿 URL ~114MB）
+│   │   ├── proxy_pool.py             #   代理池（加权健康分 + 指数退避）
+│   │   ├── proxy_fetcher.py          #   代理请求
+│   │   └── clash_controller.py       #   Clash API 控制器（IP 轮换）
+│   ├── compliance/                   # 合规内核
+│   │   ├── robots.py                 #   robots.txt 遵守
+│   │   └── throttle.py               #   令牌桶限速 + 退避重试
+│   └── ai/                           # AI 清洗
+│       ├── cleaner.py                #   LLM 富文本 → Markdown
+│       └── providers.py              #   provider 抽象（ollama/api/rule）
+│
+├── webapp/                           # 可视化演示界面
+├── docs/                             # 文档
+│   ├── linuxdo-crawling.md           #   linux.do 采集实录
+│   ├── architecture.md               #   架构设计
+│   ├── rag.md                        #   RAG 设计说明
+│   ├── reverse-engineering.md        #   签名逆向方法论
+│   └── images/                       #   效果截图
+└── tests/                            # 112 项单元测试
+```
 
 ---
 
 ## 📄 License
 
-MIT
+[MIT](LICENSE)
