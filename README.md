@@ -200,7 +200,7 @@ python -m webapp.server     # 可视化演示界面
 
 ---
 
-## 📌 技术亮点（面试可深挖）
+## 📌 技术亮点
 
 ### 1. Cloudflare 反爬的多级突破
 
