@@ -51,6 +51,10 @@ class BotConfig:
     # 限速（合规）
     requests_per_second: float = 0.33  # 约 3s/请求
     headless: bool = True
+    # 采集模式
+    fetch_mode: str = "playwright"               # playwright | flaresolverr | warp
+    flaresolverr_url: str = "http://127.0.0.1:8191/v1"
+    warp_proxy: str = "socks5://127.0.0.1:40000"
     # RAG
     rag: "RagConfig" = field(default_factory=RagConfig)
 
@@ -85,6 +89,9 @@ class BotConfig:
             db_path=env("DB_PATH", "data/linuxdo_bot.db"),
             requests_per_second=float(env("REQUESTS_PER_SECOND", "0.33")),
             headless=env("HEADLESS", "true").lower() == "true",
+            fetch_mode=env("FETCH_MODE", "playwright").lower().strip(),
+            flaresolverr_url=env("FLARESOLVERR_URL", "http://127.0.0.1:8191/v1"),
+            warp_proxy=env("WARP_PROXY", "socks5://127.0.0.1:40000"),
             rag=rag,
         )
 

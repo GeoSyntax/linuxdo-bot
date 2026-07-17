@@ -11,6 +11,12 @@ data/
 .idea/
 .vscode/
 .claude/
+.playwright-mcp/
+.playwright-mcp/
+.playwright-mcp/
+.playwright-mcp/
+.playwright-mcp/
+.playwright-mcp/
 
 # 个人文件 / 截图 / 临时文件
 郭浩宇*.pdf

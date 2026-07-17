@@ -3,7 +3,7 @@
 linux.do 是基于 **Discourse** 的中文技术社区。Discourse 的一个官方特性：
 几乎任何页面 URL 加 `.json` 就返回该页的结构化数据（前端自身取数方式）。
 
-⚠️ 合规判断（实测依据，面试可讲）：
+⚠️ 合规判断（实测依据）：
   1. **robots.txt 实测允许** `/latest.json`、`/categories.json`、`/t/*.json`、
      `/c/` 等路径（与知乎全禁相反）——合规基础成立；
   2. 站点前置 **Cloudflare 托管挑战**，普通 requests / TLS 指纹伪装均被 403；
@@ -25,6 +25,84 @@ from .base import Item, Source
 logger = logging.getLogger(__name__)
 
 _BASE = "https://linux.do"
+
+
+def create_fetcher(fetch_mode: str = "playwright", bucket=None,
+                   flaresolverr_url: str = "http://127.0.0.1:8191/v1",
+                   warp_proxy: str = "socks5://127.0.0.1:40000",
+                   headless: bool = True, proxy: str | None = None):
+    """根据配置创建合适的 fetcher（工厂函数）。
+
+    playwright  → BrowserFetcher（Playwright 真浏览器过盾）
+    flaresolverr → FlareSolverrFetcher（一次过盾 → cookie 复用 → 纯 HTTP）
+    warp        → WARPFetcher + FlareSolverrFetcher 降级链
+    """
+    if fetch_mode == "flaresolverr":
+        from .flaresolverr_fetcher import FlareSolverrFetcher
+        return FlareSolverrFetcher(flaresolverr_url=flaresolverr_url,
+                                   bucket=bucket, proxy=proxy)
+    elif fetch_mode == "warp":
+        from .flaresolverr_fetcher import FlareSolverrFetcher
+        from .warp_fetcher import WARPFetcher
+        fallback = FlareSolverrFetcher(flaresolverr_url=flaresolverr_url,
+                                       bucket=bucket)
+        return WARPFetcher(warp_proxy=warp_proxy, bucket=bucket,
+                           fallback_fetcher=fallback)
+    else:  # playwright（默认）
+        from .browser_fetcher import BrowserFetcher
+        return BrowserFetcher(bucket=bucket, headless=headless, proxy=proxy)
+
+
+def create_fetcher(fetch_mode: str = "playwright", bucket=None,
+                   flaresolverr_url: str = "http://127.0.0.1:8191/v1",
+                   warp_proxy: str = "socks5://127.0.0.1:40000",
+                   headless: bool = True, proxy: str | None = None):
+    """根据配置创建合适的 fetcher（工厂函数）。
+
+    playwright  → BrowserFetcher（Playwright 真浏览器过盾）
+    flaresolverr → FlareSolverrFetcher（一次过盾 → cookie 复用 → 纯 HTTP）
+    warp        → WARPFetcher + FlareSolverrFetcher 降级链
+    """
+    if fetch_mode == "flaresolverr":
+        from .flaresolverr_fetcher import FlareSolverrFetcher
+        return FlareSolverrFetcher(flaresolverr_url=flaresolverr_url,
+                                   bucket=bucket, proxy=proxy)
+    elif fetch_mode == "warp":
+        from .flaresolverr_fetcher import FlareSolverrFetcher
+        from .warp_fetcher import WARPFetcher
+        fallback = FlareSolverrFetcher(flaresolverr_url=flaresolverr_url,
+                                       bucket=bucket)
+        return WARPFetcher(warp_proxy=warp_proxy, bucket=bucket,
+                           fallback_fetcher=fallback)
+    else:  # playwright（默认）
+        from .browser_fetcher import BrowserFetcher
+        return BrowserFetcher(bucket=bucket, headless=headless, proxy=proxy)
+
+
+def create_fetcher(fetch_mode: str = "playwright", bucket=None,
+                   flaresolverr_url: str = "http://127.0.0.1:8191/v1",
+                   warp_proxy: str = "socks5://127.0.0.1:40000",
+                   headless: bool = True, proxy: str | None = None):
+    """根据配置创建合适的 fetcher（工厂函数）。
+
+    playwright  → BrowserFetcher（Playwright 真浏览器过盾）
+    flaresolverr → FlareSolverrFetcher（一次过盾 → cookie 复用 → 纯 HTTP）
+    warp        → WARPFetcher + FlareSolverrFetcher 降级链
+    """
+    if fetch_mode == "flaresolverr":
+        from .flaresolverr_fetcher import FlareSolverrFetcher
+        return FlareSolverrFetcher(flaresolverr_url=flaresolverr_url,
+                                   bucket=bucket, proxy=proxy)
+    elif fetch_mode == "warp":
+        from .flaresolverr_fetcher import FlareSolverrFetcher
+        from .warp_fetcher import WARPFetcher
+        fallback = FlareSolverrFetcher(flaresolverr_url=flaresolverr_url,
+                                       bucket=bucket)
+        return WARPFetcher(warp_proxy=warp_proxy, bucket=bucket,
+                           fallback_fetcher=fallback)
+    else:  # playwright（默认）
+        from .browser_fetcher import BrowserFetcher
+        return BrowserFetcher(bucket=bucket, headless=headless, proxy=proxy)
 
 
 class LinuxDoSource(Source):
