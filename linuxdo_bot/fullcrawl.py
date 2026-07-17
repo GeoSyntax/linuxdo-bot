@@ -24,7 +24,7 @@ import time
 from zhihu_crawler.client import ZhihuClient
 from zhihu_crawler.config import Config as CrawlerConfig
 from zhihu_crawler.sources.base import Item
-from zhihu_crawler.sources.linuxdo import LinuxDoSource
+from zhihu_crawler.sources.linuxdo import LinuxDoSource, create_fetcher
 
 from .config import BotConfig
 from .corpus import Corpus
@@ -42,6 +42,12 @@ class FullCrawler:
         cc = CrawlerConfig()
         cc.compliance.requests_per_second = config.requests_per_second
         self._crawler_config = cc
+        self._fetcher_kwargs = dict(
+            fetch_mode=config.fetch_mode,
+            flaresolverr_url=config.flaresolverr_url,
+            warp_proxy=config.warp_proxy,
+            headless=config.headless,
+        )
 
     # ---------------- ① 枚举 ----------------
     def enumerate_site(self, max_sitemaps: int | None = None) -> dict:
@@ -51,8 +57,9 @@ class FullCrawler:
         通过 meta 记录，重启从下一个未完成子图继续。
         """
         with ZhihuClient(self._crawler_config) as client:
-            source = LinuxDoSource(client)
-            fetcher = source._fetcher
+            fetcher = create_fetcher(bucket=getattr(client, "_bucket", None),
+                                     **self._fetcher_kwargs)
+            source = LinuxDoSource(client, fetcher=fetcher)
             try:
                 enum = SitemapEnumerator(fetcher)
                 result = enum.enumerate_all(self.corpus, max_submaps=max_sitemaps)
@@ -79,7 +86,9 @@ class FullCrawler:
 
         ok = failed = gone = 0
         with ZhihuClient(self._crawler_config) as client:
-            source = LinuxDoSource(client)
+            fetcher = create_fetcher(bucket=getattr(client, "_bucket", None),
+                                     **self._fetcher_kwargs)
+            source = LinuxDoSource(client, fetcher=fetcher)
             try:
                 for tid in claimed:
                     try:

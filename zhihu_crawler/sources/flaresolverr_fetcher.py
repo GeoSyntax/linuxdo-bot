@@ -1,33 +1,73 @@
-"""FlareSolverr 采集器：一次浏览器过盾 → cookie 复用 → 纯 HTTP 高速采集。
+"""FlareSolverr 采集器：通过 FlareSolverr 会话复用浏览器 → 高速采集。
 
-FlareSolverr 是一个 Docker 化的 HTTP 代理服务（默认端口 8191），内部运行
-undetected-chromedriver 解决 Cloudflare 挑战，返回 HTML 和 cookies。
+FlareSolverr 是一个 Docker 化的 HTTP 服务（默认端口 8191），内部运行
+undetected-chromedriver。核心优化：用 session 复用浏览器实例，避免每次
+请求都启动新浏览器。
 
-本 fetcher 的策略：
-    1. 首次请求某域名 → 调 FlareSolverr 过盾 → 拿到 cf_clearance cookie + UA
-    2. 后续请求用 requests.Session + 该 cookie 纯 HTTP 发起（~50 请求/秒）
-    3. 检测到 CF 挑战页（cookie 过期）→ 重新调 FlareSolverr 过盾
-    4. 如果 FlareSolverr 不可用 → 抛异常让调用方降级
-
-相比 Playwright：首次过盾速度相当，后续请求快 10-50 倍（不需要开浏览器页签）。
+策略：
+    1. 创建持久 session → FlareSolverr 内部复用浏览器上下文
+    2. 每个请求走 FlareSolverr request.get（内部浏览器导航，自动过 CF）
+    3. session 内浏览器上下文持续复用，cookie 自动续期
+    4. 比纯 Playwright 快：FlareSolverr 用 undetected-chromedriver，反检测更强
 """
 from __future__ import annotations
 
-import json
 import logging
-import time
-from urllib.parse import urlparse
+import re
+import uuid
 
 import requests
 
 logger = logging.getLogger(__name__)
 
-# Cloudflare 挑战页特征
-_CF_MARKERS = ("Just a moment", "Checking your browser", "cf-browser-verification")
+
+def _strip_html_wrapper(text: str) -> str:
+    """FlareSolverr 通过浏览器访问 .json 端点时，JSON 被包在 <html><body><pre> 里。
+    提取其中的纯文本内容。"""
+    m = re.search(r"<pre[^>]*>(.+?)</pre>", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    return text
+
+
+def _strip_html_wrapper(text: str) -> str:
+    """FlareSolverr 通过浏览器访问 .json 端点时，JSON 被包在 <html><body><pre> 里。
+    提取其中的纯文本内容。"""
+    m = re.search(r"<pre[^>]*>(.+?)</pre>", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    return text
+
+
+def _strip_html_wrapper(text: str) -> str:
+    """FlareSolverr 通过浏览器访问 .json 端点时，JSON 被包在 <html><body><pre> 里。
+    提取其中的纯文本内容。"""
+    m = re.search(r"<pre[^>]*>(.+?)</pre>", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    return text
+
+
+def _strip_html_wrapper(text: str) -> str:
+    """FlareSolverr 通过浏览器访问 .json 端点时，JSON 被包在 <html><body><pre> 里。
+    提取其中的纯文本内容。"""
+    m = re.search(r"<pre[^>]*>(.+?)</pre>", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    return text
+
+
+def _strip_html_wrapper(text: str) -> str:
+    """FlareSolverr 通过浏览器访问 .json 端点时，JSON 被包在 <html><body><pre> 里。
+    提取其中的纯文本内容。"""
+    m = re.search(r"<pre[^>]*>(.+?)</pre>", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    return text
 
 
 class FlareSolverrFetcher:
-    """基于 FlareSolverr 的 CF 过盾 + cookie 复用采集器。
+    """基于 FlareSolverr 会话的 CF 过盾采集器。
 
     鸭子接口与 BrowserFetcher 一致：get_text(url) -> str, close()。
     """
@@ -43,138 +83,108 @@ class FlareSolverrFetcher:
         self._bucket = bucket
         self._proxy = proxy
         self._timeout = timeout * 1000  # FlareSolverr 用毫秒
+        self._session_id: str | None = None
+        self._http = requests.Session()
 
-        self._session = requests.Session()
-        self._ua: str | None = None
-        self._solved_domains: set[str] = set()
-        self._cookie_expires: dict[str, float] = {}  # domain -> timestamp
+    def _ensure_session(self) -> str:
+        """确保 FlareSolverr session 存在，返回 session_id。"""
+        if self._session_id:
+            return self._session_id
+        self._session_id = f"linuxdo-{uuid.uuid4().hex[:8]}"
+        try:
+            resp = self._http.post(self._fs_url, json={
+                "cmd": "sessions.create",
+                "session": self._session_id,
+            }, timeout=30)
+            data = resp.json()
+            if data.get("status") == "ok":
+                logger.info("FlareSolverr session 创建: %s", self._session_id)
+            else:
+                logger.warning("FlareSolverr session 创建失败: %s", data.get("message"))
+                self._session_id = None
+        except requests.RequestException as exc:
+            logger.error("FlareSolverr 不可达: %s", exc)
+            self._session_id = None
+        return self._session_id
 
-    def _domain(self, url: str) -> str:
-        return urlparse(url).netloc or url
+    def get_text(self, url: str, attempts: int = 2) -> str:
+        """通过 FlareSolverr 获取 URL 内容。"""
+        if self._bucket is not None:
+            self._bucket.acquire()
 
-    def _solve_cf(self, url: str) -> bool:
-        """调 FlareSolverr 过盾，拿到 cookies + UA 注入 session。
-
-        返回 True 表示过盾成功。
-        """
-        domain = self._domain(url)
-        logger.info("FlareSolverr 过盾: %s", domain)
-
+        session = self._ensure_session()
         payload = {
             "cmd": "request.get",
             "url": url,
             "maxTimeout": self._timeout,
         }
+        if session:
+            payload["session"] = session
         if self._proxy:
             payload["proxy"] = {"url": self._proxy}
 
-        try:
-            resp = requests.post(
-                self._fs_url,
-                json=payload,
-                timeout=(10, self._timeout / 1000 + 30),
-            )
-            resp.raise_for_status()
-        except requests.RequestException as exc:
-            logger.error("FlareSolverr 请求失败（服务是否运行？）: %s", exc)
-            return False
-
-        data = resp.json()
-        if data.get("status") != "ok":
-            logger.error("FlareSolverr 返回错误: %s", data.get("message", data))
-            return False
-
-        solution = data.get("solution", {})
-        cookies = solution.get("cookies", [])
-        user_agent = solution.get("userAgent", "")
-
-        if not cookies:
-            logger.warning("FlareSolverr 返回空 cookies，过盾可能失败")
-            return False
-
-        # 注入 cookies 到 session
-        for c in cookies:
-            self._session.cookies.set(
-                c["name"], c["value"],
-                domain=c.get("domain", domain),
-                path=c.get("path", "/"),
-            )
-
-        if user_agent:
-            self._ua = user_agent
-            self._session.headers["User-Agent"] = user_agent
-
-        self._solved_domains.add(domain)
-        self._cookie_expires[domain] = time.time() + 1800  # 30 分钟有效
-        logger.info("FlareSolverr 过盾成功: %s (cookies=%d, ua=%s)",
-                    domain, len(cookies), user_agent[:50] if user_agent else "无")
-        return True
-
-    def _is_cf_challenge(self, text: str, status_code: int = 200) -> bool:
-        """检测是否被 CF 拦截。"""
-        if status_code in (403, 503):
-            return True
-        return any(marker in text for marker in _CF_MARKERS)
-
-    def _invalidate(self, domain: str) -> None:
-        """清除某域名的过盾状态，下次请求重新过盾。"""
-        self._solved_domains.discard(domain)
-        self._cookie_expires.pop(domain, None)
-        try:
-            self._session.cookies.clear(domain=domain)
-        except KeyError:
-            pass
-
-    def set_proxy(self, proxy: str | None) -> None:
-        """切换代理。因 cf_clearance 绑 IP，换代理需重新过盾。"""
-        if proxy == self._proxy:
-            return
-        self._proxy = proxy
-        # 清除所有过盾状态
-        self._solved_domains.clear()
-        self._cookie_expires.clear()
-        self._session.cookies.clear()
-        logger.info("FlareSolverr 切换代理: %s，清除所有 cookie", proxy)
-
-    def get_text(self, url: str, attempts: int = 2) -> str:
-        """获取 URL 内容。先尝试 cookie 复用，失败则重新过盾。"""
-        if self._bucket is not None:
-            self._bucket.acquire()
-
-        domain = self._domain(url)
-
-        # 如果该域名未过盾或 cookie 已过期，先过盾
-        if domain not in self._solved_domains or time.time() > self._cookie_expires.get(domain, 0):
-            if not self._solve_cf(url):
-                raise ConnectionError(f"FlareSolverr 过盾失败: {url}")
-
-        last = ""
         for i in range(max(1, attempts)):
             try:
-                resp = self._session.get(url, timeout=15)
-                last = resp.text
-                status = resp.status_code
+                resp = self._http.post(
+                    self._fs_url, json=payload,
+                    timeout=(10, self._timeout / 1000 + 60),
+                )
+                resp.raise_for_status()
+                data = resp.json()
 
-                if not self._is_cf_challenge(last, status):
-                    return last
-
-                logger.warning("cookie 过期或 CF 拦截(第%d/%d次): %s (status=%d)",
-                               i + 1, attempts, url, status)
-                # 重新过盾
-                self._invalidate(domain)
-                if not self._solve_cf(url):
-                    raise ConnectionError(f"FlareSolverr 重新过盾失败: {url}")
-
+                if data.get("status") == "ok":
+                    solution = data.get("solution", {})
+                    html = solution.get("response", "")
+                    status = solution.get("status", 200)
+                    if status in (403, 503) and "Just a moment" in html:
+                        logger.warning("FlareSolverr CF 未过(第%d/%d次): %s",
+                                       i + 1, attempts, url)
+                        # session 无效时重建
+                        if session:
+                            self._destroy_session()
+                            session = self._ensure_session()
+                            if session:
+                                payload["session"] = session
+                        continue
+                    # FlareSolverr 浏览器返回的 JSON 页面被 <html><body><pre> 包裹，需提取
+                    html = _strip_html_wrapper(html)
+                    # FlareSolverr 浏览器返回的 JSON 页面被 <html><body><pre> 包裹，需提取
+                    html = _strip_html_wrapper(html)
+                    # FlareSolverr 浏览器返回的 JSON 页面被 <html><body><pre> 包裹，需提取
+                    html = _strip_html_wrapper(html)
+                    # FlareSolverr 浏览器返回的 JSON 页面被 <html><body><pre> 包裹，需提取
+                    html = _strip_html_wrapper(html)
+                    return html
+                else:
+                    logger.error("FlareSolverr 错误: %s", data.get("message"))
+                    if i == attempts - 1:
+                        raise ConnectionError(f"FlareSolverr 失败: {data.get('message')}")
             except requests.RequestException as exc:
-                logger.warning("请求异常(第%d/%d次): %s - %s", i + 1, attempts, url, exc)
+                logger.warning("FlareSolverr 请求异常(第%d/%d): %s",
+                               i + 1, attempts, exc)
                 if i == attempts - 1:
                     raise
-                time.sleep(1)
 
-        return last
+        return ""
+
+    def _destroy_session(self) -> None:
+        if not self._session_id:
+            return
+        try:
+            self._http.post(self._fs_url, json={
+                "cmd": "sessions.destroy",
+                "session": self._session_id,
+            }, timeout=10)
+        except Exception:  # noqa: BLE001
+            pass
+        self._session_id = None
+
+    def set_proxy(self, proxy: str | None) -> None:
+        if proxy == self._proxy:
+            return
+        self._destroy_session()
+        self._proxy = proxy
 
     def close(self) -> None:
-        """释放资源。"""
-        self._session.close()
-        self._solved_domains.clear()
-        self._cookie_expires.clear()
+        self._destroy_session()
+        self._http.close()
